@@ -38,7 +38,7 @@ _env: Optional[DebtRecoveryEnv] = None
 # ── Request / Response models ────────────────────────────────────────────────
 
 class ResetRequest(BaseModel):
-    task_id: str
+    task_id: str = "task1_single_cooperative"
     seed: int = 42
 
 
@@ -64,11 +64,12 @@ async def root() -> RedirectResponse:
 
 
 @app.post("/reset")
-async def reset_env(request: ResetRequest) -> Dict[str, Any]:
+async def reset_env(request: Optional[ResetRequest] = None) -> Dict[str, Any]:
     """Reset the environment with a task and seed. Returns initial observation."""
     global _env
     try:
-        _env = DebtRecoveryEnv(task_id=request.task_id, seed=request.seed)
+        payload = request or ResetRequest()
+        _env = DebtRecoveryEnv(task_id=payload.task_id, seed=payload.seed)
         obs = await _env.reset()
         return obs.model_dump()
     except ValueError as e:
