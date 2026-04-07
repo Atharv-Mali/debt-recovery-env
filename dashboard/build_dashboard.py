@@ -1,0 +1,627 @@
+"""Build the dashboard index.html file."""
+import os
+
+html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DebtRecovery·ENV — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#F8F9FC;--surface:#FFFFFF;--surface-2:#F1F4F9;--border:#E2E8F0;
+--accent:#1A56DB;--accent-light:#EBF3FF;--success:#0E9F6E;--warning:#FF8C00;
+--danger:#E02424;--text-primary:#111827;--text-secondary:#6B7280;--text-muted:#9CA3AF;
+--radius:10px;--shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+}
+body.dark-theme{
+--bg:#0F172A;--surface:#1E293B;--surface-2:#334155;--border:#334155;
+--text-primary:#F8FAFC;--text-secondary:#94A3B8;--text-muted:#64748B;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-primary);display:flex;flex-direction:column;min-height:100vh}
+h1,h2,h3,h4{font-family:'DM Sans',sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+/* Top nav */
+.topnav{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px}
+.topnav-logo{font-family:'DM Sans',sans-serif;font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px}
+.topnav-logo .pill{background:linear-gradient(135deg,#1A56DB,#7C3AED);color:#fff;font-size:11px;padding:2px 10px;border-radius:20px;font-weight:600}
+.topnav-right{display:flex;align-items:center;gap:16px;color:var(--text-secondary);font-size:13px}
+.clock{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-muted)}
+/* Layout */
+.layout{display:flex;flex:1}
+/* Sidebar */
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-secondary);transition:all .15s ease}
+.nav-item:hover{background:var(--surface-2);color:var(--text-primary)}
+.nav-item.active{background:var(--accent-light);color:var(--accent);font-weight:600}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-muted);font-weight:600;display:inline-block}
+
+/* Task Selector */
+.task-selector{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:6px}
+.task-btn{border:none;background:transparent;padding:6px 12px;border-radius:4px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer}
+.task-btn.active{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+
+/* Main */
+.main{flex:1;padding:24px 32px;max-width:1200px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+.page-title{font-size:22px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);opacity:0;transform:translateY(16px);animation:fadeUp .4s ease forwards}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+.card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);transition:all .15s ease}
+/* Grid */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi-card{text-align:center}
+.kpi-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-value{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700}
+.kpi-value.green{color:var(--success)}.kpi-value.orange{color:var(--warning)}.kpi-value.red{color:var(--danger)}.kpi-value.blue{color:var(--accent)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+/* Chart */
+.chart-container{position:relative;height:240px}
+.chart-container svg{width:100%;height:100%;transition:all 0.1s}
+/* Bars */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px}
+.bar-label{width:130px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:22px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;width:0;transition:width .4s ease}
+.bar-val{font-family:'JetBrains Mono',monospace;width:50px;text-align:right;font-size:12px;color:var(--text-secondary)}
+
+/* Matrix Heatmap */
+.matrix{display:grid;grid-template-columns:120px repeat(4, 1fr);gap:2px;font-size:11px}
+.m-header{text-align:center;font-weight:600;color:var(--text-muted);padding:8px}
+.m-label{text-align:right;padding-right:12px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center;justify-content:flex-end}
+.m-cell{height:28px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'JetBrains Mono',monospace;transition:all 0.2s}
+.m-cell:hover{transform:scale(1.05);z-index:10;box-shadow:var(--shadow-md)}
+
+/* Live feed */
+.feed{max-height:500px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.feed-entry{border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:13px;opacity:0;transform:translateX(20px);animation:slideIn .3s ease forwards;border-left:3px solid var(--accent)}
+.feed-entry.positive{border-left-color:var(--success)}
+.feed-entry.negative{border-left-color:var(--danger)}
+.feed-entry.warning{border-left-color:var(--warning)}
+@keyframes slideIn{to{opacity:1;transform:translateX(0)}}
+.feed-step{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent)}
+.feed-reward{font-family:'JetBrains Mono',monospace;font-weight:600}
+.feed-reward.pos{color:var(--success)}.feed-reward.neg{color:var(--danger)}
+
+/* Reward bars */
+.rw-component{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rw-name{width:150px;font-size:13px;color:var(--text-secondary)}
+.rw-bar{flex:1;height:18px;background:var(--surface-2);border-radius:3px;overflow:hidden}
+.rw-bar-fill{height:100%;border-radius:3px;transition:width 0.4s}
+.rw-bar-pos{background:linear-gradient(90deg,#0E9F6E,#34D399)}
+.rw-bar-neg{background:linear-gradient(90deg,#E02424,#F87171)}
+.rw-val{font-family:'JetBrains Mono',monospace;font-size:12px;width:60px;text-align:right}
+.total-reward{font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;text-align:center;margin:16px 0}
+.total-reward.pos{color:var(--success)}.total-reward.neg{color:var(--danger)}
+
+/* Gauge & check */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:20px}
+.gauge-value{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;margin-top:-30px}
+.check-item{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px}
+.check-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.check-ok{background:#DEF7EC;color:#03543F}.check-warn{background:#FDF6B2;color:#723B13}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.tbl tbody tr:hover{background:var(--surface-2)}
+
+.pill-sm{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.pill-green{background:#DEF7EC;color:#03543F}.pill-yellow{background:#FDF6B2;color:#723B13}
+.pill-red{background:#FDE8E8;color:#9B1C1C}.pill-gray{background:#F3F4F6;color:#6B7280}
+.pill-blue{background:var(--accent-light);color:var(--accent)}
+
+.glow-red{animation:glow 1.5s ease infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 8px rgba(224,36,36,.3)}50%{box-shadow:0 0 20px rgba(224,36,36,.6)}}
+</style>
+</head>
+<body>
+<!-- TOP NAV -->
+<nav class="topnav">
+<div class="topnav-logo">DebtRecovery·ENV <span class="pill">OpenEnv</span></div>
+<div class="topnav-right">
+<div class="task-selector">
+    <button class="task-btn" id="btn-easy" onclick="setTask('easy')">Easy</button>
+    <button class="task-btn" id="btn-medium" onclick="setTask('medium')">Medium</button>
+    <button class="task-btn active" id="btn-hard" onclick="setTask('hard')">Hard</button>
+</div>
+<button onclick="toggleTheme()" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);display:flex;align-items:center;margin-right:12px;">
+    <svg id="theme-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</button>
+<span class="clock" id="clock">00:00:00</span>
+</div>
+</nav>
+
+<div class="layout">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+<div class="nav-item" data-page="overview" onclick="showPage('overview',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+Overview</div>
+<div class="nav-item active" data-page="training" onclick="showPage('training',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+Training Analytics Live</div>
+<div class="nav-item" data-page="live" onclick="showPage('live',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+Live Episode Feed</div>
+<div class="nav-item" data-page="accounts" onclick="showPage('accounts',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+Accounts Directory</div>
+<div class="nav-item" data-page="reward" onclick="showPage('reward',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+Reward Breakdown</div>
+<div class="nav-item" data-page="compliance" onclick="showPage('compliance',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+Compliance Monitor</div>
+<div class="nav-item" data-page="baseline" onclick="showPage('baseline',this)">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+Baseline Scores</div>
+<div class="sidebar-footer">
+<div><span class="badge">v1.1.0</span> <span class="badge">3 Tasks</span></div>
+</div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- OVERVIEW -->
+<div class="page" id="page-overview">
+<h2 class="page-title">Live Overview <span class="pill-sm pill-blue lbl-task-name" style="margin-left:12px;">Task 3: Hard</span></h2>
+<div class="kpi-row">
+<div class="card kpi-card"><div class="kpi-label">Portfolio Recovery</div><div class="kpi-value" id="kpi-recovery">0%</div></div>
+<div class="card kpi-card"><div class="kpi-label">Accounts Resolved</div><div class="kpi-value blue" id="kpi-resolved">0</div></div>
+<div class="card kpi-card"><div class="kpi-label">Compliance Score</div><div class="kpi-value" id="gauge-val">100%</div></div>
+<div class="card kpi-card"><div class="kpi-label">Episode Step</div><div class="kpi-value blue" id="kpi-step-overview">0</div></div>
+</div>
+<div class="two-col">
+<div class="card"><h4 style="margin-bottom:12px">Action Distribution (This Episode)</h4><div id="action-dist"></div></div>
+<div class="card"><h4 style="margin-bottom:12px">Compliance Alerts</h4><div id="checklist"></div></div>
+</div>
+</div>
+
+<!-- TRAINING ANALYTICS -->
+<div class="page active" id="page-training">
+<h2 class="page-title">Agent Training Progression <span class="pill-sm pill-blue lbl-task-name" style="margin-left:12px;">Task 3: Hard</span></h2>
+<div class="kpi-row">
+<div class="card kpi-card"><div class="kpi-label">Training Episode</div><div class="kpi-value blue" id="kpi-episode">0</div></div>
+<div class="card kpi-card"><div class="kpi-label">Current Step</div><div class="kpi-value" id="kpi-step">0</div></div>
+<div class="card kpi-card"><div class="kpi-label">Avg Reward (last ep)</div><div class="kpi-value green" id="kpi-reward">0.0</div></div>
+<div class="card kpi-card"><div class="kpi-label">Avg Complaint Rate</div><div class="kpi-value orange" id="kpi-complaint">0.0%</div></div>
+</div>
+<div class="two-col">
+    <div class="card"><h4 style="margin-bottom:12px">Reward vs Training Episodes</h4><div class="chart-container" id="chart-train-reward"></div></div>
+    <div class="card"><h4 style="margin-bottom:12px">Complaint Rate (%) vs Episodes</h4><div class="chart-container" id="chart-train-complaint"></div></div>
+</div>
+<div class="two-col">
+    <div class="card"><h4 style="margin-bottom:12px">Live Action Policy Heatmap</h4><p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Updates every step based on policy decisions.</p><div id="heatmap-container"></div></div>
+    <div class="card"><h4 style="margin-bottom:12px">In-Episode Sentiment Trajectory</h4><p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Draws dynamically across the steps of the current episode.</p><div class="chart-container" id="chart-sentiment"></div></div>
+</div>
+</div>
+
+<!-- LIVE FEED -->
+<div class="page" id="page-live">
+<h2 class="page-title">Live Episode Feed <span class="pill-sm pill-blue lbl-task-name" style="margin-left:12px;">Task 3: Hard</span></h2>
+<div id="audit-banner" class="card glow-red" style="display:none;margin-bottom:16px;background:#FDE8E8;border-color:#E02424;text-align:center;font-weight:600;color:#9B1C1C">⚠ REGULATORY AUDIT ACTIVE — Calling drastically restricted</div>
+<div class="feed" id="feed"></div>
+</div>
+
+<!-- ACCOUNTS -->
+<div class="page" id="page-accounts">
+<h2 class="page-title">Account Details (Current Episode)</h2>
+<div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr>
+<th>Account</th><th>Name</th><th>DPD</th><th>Outstanding (₹)</th><th>Sentiment</th><th>Contact</th><th>Status</th>
+</tr></thead><tbody id="accounts-tbody"></tbody></table></div>
+</div>
+
+<!-- REWARD BREAKDOWN -->
+<div class="page" id="page-reward">
+<h2 class="page-title">Reward Breakdown — Latest Step</h2>
+<div class="card">
+<div class="total-reward pos" id="total-rw">+0.00</div>
+<div id="rw-bars"></div>
+</div>
+</div>
+
+<!-- COMPLIANCE -->
+<div class="page" id="page-compliance">
+<h2 class="page-title">Compliance Monitor</h2>
+<div class="two-col">
+<div class="card"><div class="gauge-wrap"><svg id="gauge" width="220" height="130" viewBox="0 0 220 130"></svg><div class="gauge-value" id="gauge-val-inner">100%</div></div></div>
+<div class="card"><h4 style="margin-bottom:12px">Compliance Events Ledger</h4>
+<table class="tbl"><thead><tr><th>Step</th><th>Account</th><th>Event</th><th>Severity</th></tr></thead><tbody id="compliance-tbody"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- BASELINE -->
+<div class="page" id="page-baseline">
+<h2 class="page-title">Baseline Scores</h2>
+<div class="card" style="margin-bottom:20px">
+<table class="tbl"><thead><tr><th>Task</th><th>Difficulty</th><th>Seed</th><th>Model</th><th>Score</th><th>Status</th></tr></thead>
+<tbody id="baseline-tbody"></tbody></table></div>
+</div>
+
+</main>
+</div>
+
+<script>
+/* --- NAVIGATION --- */
+function showPage(id, el){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+id).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    if(el)el.classList.add('active');
+}
+function toggleTheme() {
+    document.body.classList.toggle('dark-theme');
+    const isDark = document.body.classList.contains('dark-theme');
+    const svg = document.getElementById('theme-icon');
+    if (isDark) {
+        svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+    } else {
+        svg.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    }
+}
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString()},1000);
+
+/* --- LIVE SIMULATION GLOBALS --- */
+const TASKS = {
+    'easy': { accounts: 1, steps: 10, name: 'Task 1: Easy' },
+    'medium': { accounts: 10, steps: 30, name: 'Task 2: Medium' },
+    'hard': { accounts: 150, steps: 300, name: 'Task 3: Hard' }
+};
+
+let currentTaskType = 'hard';
+let MAX_STEPS = TASKS[currentTaskType].steps;
+let TOTAL_ACCOUNTS = TASKS[currentTaskType].accounts;
+
+let episodeCount = 0;
+let currentStep = 0;
+let rewardHistory = [];
+let complaintHistory = [];
+let sentimentAreaHistory = [];
+let heatmapMatrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]; 
+let actionCounts = {};
+
+let accounts = [];
+let episodeViolations = 0;
+let episodeComplaints = 0;
+let cumulativeReward = 0;
+let resolvedCount = 0;
+let violationsLog = [];
+let auditActive = false;
+
+const SENTIMENTS = ["cooperative","avoidant","hostile","ghost"];
+const ACTIONS = ['CALL_MORNING', 'NEGOTIATE_PTP', 'SMS_WARNING', 'EMAIL_EMPATHETIC', 'ESCALATE_LEGAL'];
+const ACTION_MAP = {'CALL_MORNING':0, 'NEGOTIATE_PTP':1, 'SMS_WARNING':2, 'EMAIL_EMPATHETIC':3, 'ESCALATE_LEGAL':4};
+const SENT_PILL={cooperative:"pill-green",avoidant:"pill-yellow",hostile:"pill-red",ghost:"pill-gray"};
+ACTIONS.forEach(a=>actionCounts[a]=0);
+
+/* --- TASK CHANGER --- */
+function setTask(type) {
+    currentTaskType = type;
+    MAX_STEPS = TASKS[type].steps;
+    TOTAL_ACCOUNTS = TASKS[type].accounts;
+    document.querySelectorAll('.task-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('btn-'+type).classList.add('active');
+    
+    document.querySelectorAll('.lbl-task-name').forEach(el => el.textContent = TASKS[type].name);
+    
+    episodeCount = 0;
+    rewardHistory = [0];
+    complaintHistory = [5];
+    sentimentAreaHistory = [];
+    heatmapMatrix = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+    
+    document.getElementById('feed').innerHTML = ''; // Clear feed
+    resetEnvironment();
+    renderHeatmap();
+    document.getElementById('chart-train-reward').innerHTML = '';
+    document.getElementById('chart-train-complaint').innerHTML = '';
+}
+
+function resetEnvironment() {
+    accounts = [];
+    for(let i=0; i<TOTAL_ACCOUNTS; i++){
+        const dpd = Math.floor(Math.random()*160) + 10;
+        accounts.push({
+            id: `BRW_${String(i+1).padStart(3,'0')}`,
+            name: "Borrower " + (i+1),
+            dpd: dpd,
+            outstanding: Math.floor(Math.random()*400000)+10000,
+            payment: 0,
+            sentiment: dpd>120?'ghost':dpd>80?SENTIMENTS[Math.floor(Math.random()*3)]:(dpd>50?SENTIMENTS[Math.floor(Math.random()*2)]:'cooperative'),
+            contactToday: 0,
+            resolved: false
+        });
+    }
+    currentStep = 0;
+    episodeViolations = 0;
+    episodeComplaints = 0;
+    cumulativeReward = 0;
+    resolvedCount = 0;
+    sentimentAreaHistory = [];
+    violationsLog = [];
+    auditActive = false;
+    document.getElementById('audit-banner').style.display='none';
+    
+    ACTIONS.forEach(a=>actionCounts[a]=0); // clear overview pie
+}
+
+// Draw Utilities
+function renderAreaChart(elId, history, colors) {
+    const el = document.getElementById(elId);
+    if(!el) return;
+    const w = el.clientWidth || 500, h = el.clientHeight || 240, pad = 30;
+    if (history.length === 0) { el.innerHTML = ''; return; }
+    
+    let svg = `<svg viewBox="0 0 ${w} ${h}">`;
+    history.forEach((pts, layerIdx) => {
+        let pt=`M ${pad},${h-pad-(pts[0][0]/100)*(h-2*pad)}`;
+        for(let i=1; i<pts.length; i++) {
+            pt+=` L ${pad+i*((w-2*pad)/(MAX_STEPS-1))},${h-pad-(pts[i][0]/100)*(h-2*pad)}`;
+        }
+        pt+=` L ${pad+(pts.length-1)*((w-2*pad)/(MAX_STEPS-1))},${h-pad-(pts[pts.length-1][1]/100)*(h-2*pad)}`;
+        for(let i=pts.length-2; i>=0; i--) {
+            pt+=` L ${pad+i*((w-2*pad)/(MAX_STEPS-1))},${h-pad-(pts[i][1]/100)*(h-2*pad)}`;
+        }
+        svg+=`<path d="${pt} Z" fill="${colors[layerIdx]}" opacity="0.85" stroke="#fff" stroke-width="0.5"/>`;
+    });
+    
+    svg += `<line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#E2E8F0" stroke-width="2"/></svg>`;
+    el.innerHTML = svg;
+}
+
+function renderLineChart(elId, data, color) {
+    const el = document.getElementById(elId);
+    if(!el || data.length === 0) return;
+    const w = el.clientWidth || 500, h = el.clientHeight || 240, pad = 30;
+    
+    const minD = Math.min(...data);
+    const maxD = Math.max(...data);
+    const valMin = minD > 0 ? 0 : minD * 1.1;
+    const valMax = maxD < 0 ? 0.1 : Math.max(0.1, maxD * 1.1);
+    const range = Math.max(0.1, valMax - valMin);
+    
+    const getY = (v) => h - pad - ((v - valMin) / range) * (h - 2*pad);
+    
+    let path = `M ${pad},${getY(data[0]||0)}`;
+    if (data.length === 1) {
+        path += ` L ${w-pad},${getY(data[0]||0)}`;
+    } else {
+        for(let i=1; i<data.length; i++) {
+            const x = pad + i * ((w - 2*pad) / (data.length - 1));
+            path += ` L ${x},${getY(data[i])}`;
+        }
+    }
+    
+    const zeroY = getY(0);
+    
+    el.innerHTML = `<svg viewBox="0 0 ${w} ${h}">
+        ${(valMin < 0 && valMax > 0) ? `<line x1="${pad}" y1="${zeroY}" x2="${w-pad}" y2="${zeroY}" stroke="#E2E8F0" stroke-width="2" stroke-dasharray="4"/>` : ''}
+        <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#E2E8F0" stroke-width="2"/>
+        <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="#E2E8F0" stroke-width="2"/>
+        <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="${w-pad}" cy="${getY(data[data.length-1])}" r="5" fill="${color}"/>
+    </svg>`;
+}
+
+function renderHeatmap() {
+    const hEl = document.getElementById('heatmap-container');
+    const sents = ['Coop.', 'Avoid.', 'Hostile', 'Ghost'];
+    const maxVal = Math.max(1, ...heatmapMatrix.flat());
+    
+    let hHtml = '<div class="matrix"><div class="m-header"></div>'+sents.map(s=>`<div class="m-header">${s}</div>`).join('');
+    ACTIONS.forEach((a, i) => {
+        hHtml += `<div class="m-label">${a.replace('_',' ')}</div>`;
+        heatmapMatrix[i].forEach(v => {
+            const intensity = v / maxVal;
+            const bg = `rgba(26,86,219,${intensity})`;
+            const color = intensity>0.5?'#fff':(intensity>0? '#333':'#999');
+            hHtml += `<div class="m-cell" style="background:${bg}; color:${color}; font-weight:600">${v}</div>`;
+        });
+    });
+    hEl.innerHTML = hHtml + '</div>';
+}
+
+function updateSentimentArea() {
+    let sCounts = [0,0,0,0];
+    accounts.forEach(a => sCounts[SENTIMENTS.indexOf(a.sentiment)]++);
+    let pct = sCounts.map(v => (v/TOTAL_ACCOUNTS)*100);
+    
+    if(sentimentAreaHistory.length === 0) {
+        sentimentAreaHistory = [[], [], [], []];
+    }
+    
+    let y0 = 0;
+    pct.forEach((val, i) => {
+        let y1 = y0 + val;
+        // avoid crashing math if MAX_STEPS changes mid-flight
+        if(sentimentAreaHistory[i].length < MAX_STEPS) {
+             sentimentAreaHistory[i].push([y0, y1]);
+        }
+        y0 = y1;
+    });
+    
+    renderAreaChart('chart-sentiment', sentimentAreaHistory, ['#0E9F6E','#FF8C00','#E02424','#E2E8F0']); 
+}
+
+function drawActionDistOverview(){
+    const total=Math.max(1, Object.values(actionCounts).reduce((a,b)=>a+b,0));
+    const dt = Object.entries(actionCounts).sort((a,b)=>b[1]-a[1]);
+    const colors=['#1A56DB','#7C3AED','#0E9F6E','#FF8C00','#E02424','#06B6D4'];
+    document.getElementById('action-dist').innerHTML=dt.map(([n,c],i)=>{
+        return `<div class="bar-row"><div class="bar-label">${n.replace('_',' ')}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/total*100)}%;background:${colors[i%colors.length]}"></div></div><div class="bar-val">${c}</div></div>`;
+    }).join('');
+}
+
+function drawGauge(pct){
+    const svg=document.getElementById('gauge');
+    const cx=110,cy=110,r=90,startAngle=Math.PI,endAngle=2*Math.PI;
+    const angle=startAngle+(endAngle-startAngle)*(pct/100);
+    const bg=`M ${cx+r*Math.cos(startAngle)} ${cy+r*Math.sin(startAngle)} A ${r} ${r} 0 0 1 ${cx+r*Math.cos(endAngle)} ${cy+r*Math.sin(endAngle)}`;
+    const fg=`M ${cx+r*Math.cos(startAngle)} ${cy+r*Math.sin(startAngle)} A ${r} ${r} 0 0 1 ${cx+r*Math.cos(angle)} ${cy+r*Math.sin(angle)}`;
+    svg.innerHTML=`<path d="${bg}" fill="none" stroke="#E2E8F0" stroke-width="14" stroke-linecap="round"/><path d="${fg}" fill="none" stroke="${pct>80?'#0E9F6E':pct>50?'#FF8C00':'#E02424'}" stroke-width="14" stroke-linecap="round"/>`;
+    document.getElementById('gauge-val').textContent = pct.toFixed(1) + '%';
+    document.getElementById('gauge-val-inner').textContent = pct.toFixed(1) + '%';
+}
+
+function renderAllViews(stepTotal, rewardObj, complianceScore) {
+    /* 1. Accounts table */
+    // only render up to 50 items so DOM doesn't crash on high speed
+    let tableAcc = accounts;
+    if(TOTAL_ACCOUNTS > 50) tableAcc = accounts.slice(0,50); 
+    
+    document.getElementById('accounts-tbody').innerHTML=tableAcc.map(a=>`<tr><td class="mono">${a.id}</td><td>${a.name}</td><td style="color:${a.dpd<30?'var(--success)':a.dpd<60?'var(--warning)':a.dpd<90?'#FF8C00':'var(--danger)'};font-weight:600" class="mono">${a.dpd}</td><td class="mono">₹${a.outstanding.toLocaleString('en-IN')}</td><td><span class="pill-sm ${SENT_PILL[a.sentiment]||'pill-gray'}">${a.sentiment}</span></td><td class="mono">${a.contactToday}</td><td>${a.resolved?'<span class="pill-sm pill-green">✓ Resolved</span>':'<span class="pill-sm pill-blue">● Active</span>'}</td></tr>`).join('');
+    
+    /* 2. Overview Overview */
+    const totalOut=accounts.reduce((s,a)=>s+a.outstanding+a.payment,0);
+    const recPct=totalOut>0?(accounts.reduce((s,a)=>s+a.payment,0)/totalOut*100):0;
+    document.getElementById('kpi-recovery').textContent=recPct.toFixed(1)+'%';
+    document.getElementById('kpi-resolved').textContent=resolvedCount + ` / ${TOTAL_ACCOUNTS}`;
+    document.getElementById('kpi-step-overview').textContent=currentStep + ` / ` + MAX_STEPS;
+    
+    /* 3. Reward Bars */
+    const tot=(Object.values(rewardObj).reduce((a,b)=>a+b,0)).toFixed(3);
+    document.getElementById('total-rw').textContent=(tot>=0?'+':'')+tot;
+    document.getElementById('total-rw').className='total-reward '+(tot>=0?'pos':'neg');
+    document.getElementById('rw-bars').innerHTML=Object.entries(rewardObj).map(([k,v])=>`<div class="rw-component"><div class="rw-name">${k}</div><div class="rw-bar"><div class="rw-bar-fill ${v>=0?'rw-bar-pos':'rw-bar-neg'}" style="width:${Math.min(Math.abs(v)*200,100)}%"></div></div><div class="rw-val">${v>=0?'+':''}${v.toFixed(3)}</div></div>`).join('');
+    
+    /* 4. Compliance List */
+    document.getElementById('compliance-tbody').innerHTML=violationsLog.slice(-10).map(v=>`<tr><td class="mono">${v.step}</td><td class="mono">${v.account}</td><td>${v.type}</td><td><span class="pill-sm ${v.severity==='critical'||v.severity==='high'?'pill-red':'pill-yellow'}">${v.severity}</span></td></tr>`).join('');
+    document.getElementById('checklist').innerHTML=[{l:'Max calls/day',o:episodeViolations===0},{l:'No DNC',o:true},{l:'Regulatory audit '+(auditActive?'ACTIVE':'inactive'),o:!auditActive}].map(i=>`<div class="check-item"><div class="check-icon ${i.o?'check-ok':'check-warn'}">${i.o?'✓':'⚠'}</div><span>${i.l}</span></div>`).join('');
+    
+    drawGauge(complianceScore);
+    drawActionDistOverview();
+}
+
+function selectAction(accountSentiment, ep) {
+    const learningProgress = 1.0 - Math.exp(-0.03 * ep); 
+    const isExploiting = Math.random() < learningProgress;
+    
+    if (isExploiting) {
+        if (accountSentiment === 'cooperative') return 'CALL_MORNING'; 
+        if (accountSentiment === 'avoidant') return 'SMS_WARNING'; 
+        if (accountSentiment === 'hostile') return 'EMAIL_EMPATHETIC'; 
+        if (accountSentiment === 'ghost') return 'ESCALATE_LEGAL'; 
+    }
+    return ACTIONS[Math.floor(Math.random()*ACTIONS.length)];
+}
+
+function simulateTick() {
+    if (currentStep >= MAX_STEPS) {
+        rewardHistory[rewardHistory.length-1] = cumulativeReward / MAX_STEPS;
+        const compRate = (episodeComplaints / TOTAL_ACCOUNTS) * 100;
+        complaintHistory[complaintHistory.length-1] = compRate;
+        
+        episodeCount++;
+        document.getElementById('kpi-episode').textContent = episodeCount;
+        
+        rewardHistory.push(cumulativeReward / MAX_STEPS);
+        complaintHistory.push(compRate);
+        
+        resetEnvironment();
+    }
+
+    if (currentStep > 0) {
+        rewardHistory[rewardHistory.length-1] = cumulativeReward / currentStep;
+        complaintHistory[complaintHistory.length-1] = (episodeComplaints / TOTAL_ACCOUNTS) * 100;
+    }
+    
+    renderLineChart('chart-train-reward', rewardHistory, '#1A56DB');
+    renderLineChart('chart-train-complaint', complaintHistory, '#E02424');
+    
+    const cRate = (episodeComplaints / TOTAL_ACCOUNTS) * 100;
+    document.getElementById('kpi-reward').textContent = (cumulativeReward/Math.max(1,currentStep)).toFixed(3);
+    document.getElementById('kpi-complaint').textContent = cRate.toFixed(2) + '%';
+
+    const active = accounts.filter(a => !a.resolved);
+    if(active.length > 0) {
+        const acc = active[Math.floor(Math.random()*active.length)];
+        const sentIdx = SENTIMENTS.indexOf(acc.sentiment);
+        const action = selectAction(acc.sentiment, episodeCount);
+        const actionIdx = ACTION_MAP[action];
+        
+        actionCounts[action]++;
+        heatmapMatrix[actionIdx][sentIdx]++;
+        renderHeatmap();
+        
+        let payment=0, ptp=false, complaint=false, violation=false;
+        const answered = Math.random() < (acc.sentiment==='cooperative'?0.7:acc.sentiment==='avoidant'?0.4:acc.sentiment==='hostile'?0.25:0.05);
+        
+        if (answered && action === 'NEGOTIATE_PTP') ptp = true;
+        if (answered && Math.random() < 0.2) payment = Math.floor(acc.outstanding * 0.3);
+        if (acc.sentiment === 'hostile' && action.startsWith('CALL')) { complaint = true; episodeComplaints++; } // Learn to email
+        if (acc.contactToday >= 2 && action.startsWith('CALL')) { violation = true; episodeViolations++; }
+        
+        acc.contactToday++;
+        if(payment>0){ acc.outstanding = Math.max(0, acc.outstanding-payment); acc.payment+=payment; }
+        if(acc.outstanding<=0){ acc.resolved = true; resolvedCount++; }
+        if(Math.random()<0.05) acc.sentiment = SENTIMENTS[Math.max(0, sentIdx-1)];
+        
+        if (violation) violationsLog.push({step: currentStep, account: acc.id, type: 'EXCESS_CONTACT', severity: 'high'});
+        if (complaint) violationsLog.push({step: currentStep, account: acc.id, type: 'COMPLAINT', severity: 'medium'});
+        
+        if (currentTaskType === 'hard' && currentStep === 150 && !auditActive) {
+            auditActive = true;
+            document.getElementById('audit-banner').style.display='block';
+        }
+        
+        const rw = {
+            recovery_signal: payment>0? 0.4: ptp? 0.15: 0,
+            contact_quality: answered? 0.05: -0.01,
+            sentiment_delta: 0, 
+            compliance_score: violation ? 0 : 0.02,
+            penalty_complaints: complaint ? -0.5 : 0,
+            penalty_violations: violation ? -1.5 : 0,
+            time_decay: -0.01
+        };
+        const totalRw = Object.values(rw).reduce((a,b)=>a+b,0);
+        cumulativeReward += totalRw;
+        
+        // Feed push
+        const feed = document.getElementById('feed');
+        if (feed.childNodes.length > 30) feed.removeChild(feed.lastChild); // keep DOM light
+        const entry = document.createElement('div');
+        entry.className = 'feed-entry ' + (totalRw>0.05?'positive':totalRw<-0.1?'negative':'warning');
+        entry.innerHTML = `<div><span class="feed-step">[Step ${currentStep}]</span> <strong>[${action}]</strong> → ${acc.id}</div><div style="margin-top:4px">Reward: <span class="feed-reward ${totalRw>=0?'pos':'neg'}">${totalRw>=0?'+':''}${totalRw.toFixed(3)}</span></div>`;
+        feed.prepend(entry);
+        
+        const adherenceScore = Math.max(0, (1 - (episodeViolations + episodeComplaints) / Math.max(currentStep, 1))) * 100;
+        
+        renderAllViews(totalRw, rw, adherenceScore);
+    }
+    
+    updateSentimentArea();
+    currentStep++;
+    document.getElementById('kpi-step').textContent = `${currentStep} / ${MAX_STEPS}`;
+}
+
+// SETUP BASELINE
+document.getElementById('baseline-tbody').innerHTML=[
+    {t:'task1_single_cooperative',d:'Easy',s:42,sc:0.81},
+    {t:'task2_portfolio_mixed',d:'Medium',s:1001,sc:0.52},
+    {t:'task3_portfolio_adversarial',d:'Hard',s:9999,sc:0.28}
+].map(d=>`<tr><td class="mono">${d.t}</td><td><span class="pill-sm ${d.d==='Easy'?'pill-green':d.d==='Medium'?'pill-yellow':'pill-red'}">${d.d}</span></td><td class="mono">${d.s}</td><td>PPO Agent / GPT-4</td><td class="mono">${d.sc.toFixed(2)}</td><td><span class="pill-sm pill-green">✓</span></td></tr>`).join('');
+
+setTask('hard'); // start on Hard Live Simulation
+
+// SIMULATE FAST (30ms per step = beautifully smooth tracking across tabs)
+setInterval(simulateTick, 30);
+
+</script>
+</body>
+</html>'''
+
+path = os.path.join(os.path.dirname(__file__), 'index.html')
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(html)
+print(f"Dynamic Unified Multi-Tab Dashboard written to {path}")
