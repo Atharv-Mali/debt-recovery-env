@@ -1,3 +1,15 @@
+---
+title: Debt Recovery Env
+emoji: 🏦
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# DebtRecovery ENV
+
 # DebtRecovery·ENV 🏦
 
 **OpenEnv-Compliant RL Environment for Indian NBFC Loan Collections**
