@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "debt-recovery-env"
+version = "1.0.0"
+description = "OpenEnv-compliant Indian NBFC debt recovery environment"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Atharv Mali" }
+]
+dependencies = [
+  "fastapi>=0.104.0",
+  "uvicorn>=0.24.0",
+  "pydantic>=2.0",
+  "numpy>=1.24.0",
+  "openai>=1.3.0",
+  "httpx>=0.25.0",
+  "python-multipart>=0.0.6",
+  "pytest>=7.4.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["env*", "tasks*", "baseline*"]
