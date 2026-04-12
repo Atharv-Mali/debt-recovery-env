@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
@@ -91,7 +91,7 @@ async def root() -> RedirectResponse:
 
 
 @app.post("/reset")
-async def reset_env(request: Optional[ResetRequest] = None) -> Dict[str, Any]:
+async def reset_env(request: Optional[ResetRequest] = Body(default=None)) -> Dict[str, Any]:
     """Reset the environment with a task and seed. Returns initial observation."""
     global _env
     try:

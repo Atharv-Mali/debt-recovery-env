@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .python-packages/
 .codex-temp/
+*.egg-info/
 server.out.log
 server.err.log
 .env

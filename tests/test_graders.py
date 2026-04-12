@@ -25,12 +25,12 @@ class TestGradeTask1:
         ]
         final_state = {}
         score = grade_task1(episode_log, final_state)
-        assert 0.9 <= score <= 1.0
+        assert 0.9 <= score < 1.0
 
     def test_grade_task1_zero(self):
         """No actions at all → score 0.0."""
         score = grade_task1([], {})
-        assert score == 0.0
+        assert 0.0 < score < 0.01
 
     def test_grade_task1_partial(self):
         """Partial payment with contact → mid-range score."""
@@ -81,7 +81,7 @@ class TestGradeTask2:
             }
         }
         score = grade_task2([{"dummy": True}], final_state)
-        assert 0.0 <= score <= 1.0
+        assert 0.0 < score < 1.0
         assert score > 0.3  # 50% recovery, full compliance, 50% resolution
 
 
@@ -121,13 +121,13 @@ class TestGradeTask3:
 
 
 class TestAllGradersBounded:
-    """Test that all graders return values in [0.0, 1.0]."""
+    """Test that all graders return values strictly inside (0.0, 1.0)."""
 
     def test_all_graders_bounded(self):
         for grader_fn in [grade_task1, grade_task2, grade_task3]:
             # Empty
             score = grader_fn([], {})
-            assert 0.0 <= score <= 1.0
+            assert 0.0 < score < 1.0
 
             # Minimal
             log = [
@@ -154,7 +154,7 @@ class TestAllGradersBounded:
                 }
             }
             score = grader_fn(log, state)
-            assert 0.0 <= score <= 1.0
+            assert 0.0 < score < 1.0
 
     def test_grade_router(self):
         """Test the grade() routing function."""
@@ -166,7 +166,7 @@ class TestAllGradersBounded:
             "task3_portfolio_adversarial",
         ]:
             score = grade(task_id, log, state)
-            assert 0.0 <= score <= 1.0
+            assert 0.0 < score < 1.0
 
     def test_grade_invalid_task(self):
         with pytest.raises(ValueError):

@@ -1,17 +1,20 @@
 """Deterministic grading functions for all three tasks.
 
-All graders return a float in [0.0, 1.0].
+All graders return a float strictly between 0.0 and 1.0.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
+MIN_SCORE = 0.0001
+MAX_SCORE = 0.9999
+
 
 def grade_task1(episode_log: List[Dict[str, Any]], final_state: Dict[str, Any]) -> float:
     """Grade Task 1 - single cooperative borrower."""
     if not episode_log:
-        return 0.0
+        return _clamp(0.0)
 
     total_outstanding = 0.0
     total_payments = 0.0
@@ -48,7 +51,7 @@ def grade_task1(episode_log: List[Dict[str, Any]], final_state: Dict[str, Any]) 
 def grade_task2(episode_log: List[Dict[str, Any]], final_state: Dict[str, Any]) -> float:
     """Grade Task 2 - mixed portfolio of 10 accounts."""
     if not episode_log:
-        return 0.0
+        return _clamp(0.0)
 
     metrics = final_state.get("metrics", {})
     num_accounts = metrics.get("total_accounts", 10)
@@ -68,7 +71,7 @@ def grade_task2(episode_log: List[Dict[str, Any]], final_state: Dict[str, Any]) 
 def grade_task3(episode_log: List[Dict[str, Any]], final_state: Dict[str, Any]) -> float:
     """Grade Task 3 - adversarial portfolio with a regulatory shock."""
     if not episode_log:
-        return 0.0
+        return _clamp(0.0)
 
     metrics = final_state.get("metrics", {})
     num_accounts = metrics.get("total_accounts", 25)
@@ -131,6 +134,6 @@ def grade(
     return grader(episode_log, final_state)
 
 
-def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    """Clamp a value to [lo, hi]."""
+def _clamp(value: float, lo: float = MIN_SCORE, hi: float = MAX_SCORE) -> float:
+    """Clamp a value to the validator's open interval."""
     return max(lo, min(hi, value))
